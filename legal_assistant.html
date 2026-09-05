@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Legal Assistant</title>
+  <style>
+    :root {
+      --navy: #0b1f3a;
+      --blue: #1d4ed8;
+      --cyan: #0ea5e9;
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #64748b;
+      --border: #dbe4f0;
+      --success: #047857;
+      --danger: #b42318;
+      --warning: #b45309;
+      --shadow: 0 14px 32px rgba(15, 23, 42, .10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #eef5ff 0, var(--bg) 230px);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(120deg, var(--navy), #123c71);
+      color: #fff;
+      padding: 28px 20px;
+      box-shadow: 0 5px 20px rgba(11, 31, 58, .22);
+    }
+
+    .header-inner, main, footer {
+      max-width: 1050px;
+      margin: 0 auto;
+    }
+
+    h1 { margin: 0; font-size: clamp(1.55rem, 4vw, 2.25rem); }
+    .subtitle { margin: 8px 0 0; color: #d6e7ff; font-size: 1rem; }
+
+    main { padding: 32px 20px 48px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    h2 { margin: 0 0 14px; font-size: 1.25rem; }
+    .help-text { margin: 0 0 18px; color: var(--muted); line-height: 1.55; }
+
+    label { display: block; font-weight: 700; margin-bottom: 8px; }
+
+    textarea {
+      width: 100%;
+      min-height: 135px;
+      resize: vertical;
+      padding: 14px;
+      border: 1px solid #bdcce0;
+      border-radius: 11px;
+      font: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border-color .18s, box-shadow .18s;
+    }
+
+    textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, .13);
+    }
+
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 15px; }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      border-radius: 10px;
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 18px;
+      transition: transform .15s, opacity .15s, background .15s;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { cursor: not-allowed; opacity: .65; transform: none; }
+
+    .primary { background: var(--blue); color: #fff; }
+    .primary:hover { background: #163db2; }
+    .secondary { background: #e8eff9; color: #27415f; }
+    .secondary:hover { background: #dbe7f6; }
+
+    .status {
+      display: none;
+      margin: 18px 0 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .status.show { display: block; }
+    .status.loading { background: #e7f1ff; color: #1e4f8d; }
+    .status.error { background: #fff0ef; color: var(--danger); border: 1px solid #ffd1cd; }
+    .status.success { background: #ecfdf3; color: var(--success); border: 1px solid #a7f3d0; }
+
+    #result { display: none; margin-top: 22px; }
+    #result.show { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: #075985;
+      background: #e0f2fe;
+      font-size: .86rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .result-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px;
+      background: #fbfdff;
+    }
+
+    .result-item.full { grid-column: 1 / -1; }
+    .result-label { display: block; color: var(--muted); font-size: .78rem; font-weight: 800; letter-spacing: .035em; text-transform: uppercase; }
+    .result-value { display: block; margin-top: 6px; line-height: 1.5; white-space: pre-wrap; }
+
+    .chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 7px; }
+    .chip { padding: 5px 8px; border-radius: 7px; background: #e8eff9; color: #27415f; font-weight: 700; font-size: .88rem; }
+
+    .side-title { color: var(--navy); }
+    .endpoint-box {
+      background: #0f2748;
+      color: #ddecff;
+      padding: 13px;
+      border-radius: 10px;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: .82rem;
+    }
+
+    .example-list { padding-left: 18px; margin: 12px 0 0; color: #40526c; }
+    .example-list li { margin: 9px 0; cursor: pointer; line-height: 1.4; }
+    .example-list li:hover { color: var(--blue); }
+
+    .notice {
+      margin-top: 18px;
+      background: #fff8e7;
+      border: 1px solid #fde3a6;
+      color: #785400;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    footer { padding: 0 20px 32px; color: var(--muted); font-size: .86rem; text-align: center; }
+
+    @media (max-width: 780px) {
+      .grid { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: 1fr; }
+      .result-item.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>AI Legal Assistant</h1>
+      <p class="subtitle">Legal query classification and guidance from your AI Legal Assistant API</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>Ask a legal question</h2>
+        <p class="help-text">Write your question in English, Hindi, or Hinglish. The app sends it to your existing <code>/predict</code> API endpoint.</p>
+
+        <form id="legalForm">
+          <label for="query">Your query</label>
+          <textarea id="query" placeholder="Example: Mere boss ne 3 mahine se salary nahi di" required></textarea>
+
+          <div class="actions">
+            <button class="primary" id="submitButton" type="submit">Get Legal Guidance</button>
+            <button class="secondary" id="clearButton" type="button">Clear</button>
+          </div>
+        </form>
+
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+
+        <section id="result" class="card" aria-live="polite">
+          <div class="result-header">
+            <h2>Guidance result</h2>
+            <span id="categoryBadge" class="badge">Category</span>
+          </div>
+
+          <div class="result-grid">
+            <div class="result-item">
+              <span class="result-label">Confidence</span>
+              <span id="confidence" class="result-value">—</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Severity</span>
+              <span id="severity" class="result-value">—</span>
+            </div>
+            <div class="result-item full">
+              <span class="result-label">Applicable IPC sections</span>
+              <div id="ipcSections" class="chips"></div>
+            </div>
+            <div class="result-item full">
+              <span class="result-label">General legal guidance</span>
+              <span id="legalAdvice" class="result-value">—</span>
+            </div>
+            <div class="result-item full">
+              <span class="result-label">Recommended action</span>
+              <span id="recommendedAction" class="result-value">—</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Estimated resolution time</span>
+              <span id="estimatedTime" class="result-value">—</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">API response time</span>
+              <span id="timestamp" class="result-value">—</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="notice">
+          This tool provides general informational guidance only. It does not replace advice from a qualified lawyer.
+        </div>
+      </section>
+
+      <aside class="card">
+        <h2 class="side-title">API connection</h2>
+        <p class="help-text">Paste the latest ngrok public URL printed by your Colab notebook.</p>
+        <label for="apiUrl">Public API URL</label>
+        <input id="apiUrl" type="url" placeholder="https://oxidizing-disloyal-bacterium.ngrok-free.dev" style="width:100%;padding:12px;border:1px solid #bdcce0;border-radius:10px;font:inherit;outline:none;" />
+        <div class="actions">
+          <button class="secondary" id="saveApiUrl" type="button">Save URL</button>
+        </div>
+        <p class="help-text" style="margin-top:18px;margin-bottom:8px;">Current request endpoint:</p>
+        <div id="endpointPreview" class="endpoint-box">Set your ngrok URL above</div>
+
+        <h2 class="side-title" style="margin-top:24px;">Try an example</h2>
+        <ul class="example-list" id="examples">
+          <li>Mere boss ne 3 mahine se salary nahi di</li>
+          <li>Ghar mein maar-peet ho rahi hai</li>
+          <li>Online product defective hai aur refund nahi mil raha</li>
+        </ul>
+      </aside>
+    </div>
+  </main>
+
+  <footer>AI Legal Assistant · Information only, not legal representation</footer>
+
+  <script>
+    const apiUrlInput = document.getElementById('apiUrl');
+    const endpointPreview = document.getElementById('endpointPreview');
+    const form = document.getElementById('legalForm');
+    const queryInput = document.getElementById('query');
+    const submitButton = document.getElementById('submitButton');
+    const clearButton = document.getElementById('clearButton');
+    const saveApiUrlButton = document.getElementById('saveApiUrl');
+    const statusBox = document.getElementById('status');
+    const resultBox = document.getElementById('result');
+
+    function normaliseUrl(url) {
+      return url.trim().replace(/\/+$/, '');
+    }
+
+    function getApiUrl() {
+      return normaliseUrl(apiUrlInput.value || localStorage.getItem('legalApiUrl') || '');
+    }
+
+    function updateEndpointPreview() {
+      const baseUrl = getApiUrl();
+      endpointPreview.textContent = baseUrl ? `${baseUrl}/predict` : 'Set your ngrok URL above';
+    }
+
+    function setStatus(message, type) {
+      statusBox.textContent = message;
+      statusBox.className = `status show ${type}`;
+    }
+
+    function clearStatus() {
+      statusBox.textContent = '';
+      statusBox.className = 'status';
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value ?? '—';
+    }
+
+    function renderResult(data) {
+      document.getElementById('categoryBadge').textContent = data.category || 'Unclassified';
+      setText('confidence', data.confidence !== undefined ? `${data.confidence}%` : '—');
+      setText('severity', data.severity);
+      setText('legalAdvice', data.legal_advice);
+      setText('recommendedAction', data.recommended_action);
+      setText('estimatedTime', data.estimated_resolution_time);
+      setText('timestamp', data.timestamp ? new Date(data.timestamp).toLocaleString() : '—');
+
+      const ipcContainer = document.getElementById('ipcSections');
+      ipcContainer.innerHTML = '';
+      const sections = Array.isArray(data.ipc_sections) ? data.ipc_sections : [];
+
+      if (sections.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'result-value';
+        empty.textContent = 'No IPC sections returned by the API.';
+        ipcContainer.appendChild(empty);
+      } else {
+        sections.forEach(section => {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          chip.textContent = section;
+          ipcContainer.appendChild(chip);
+        });
+      }
+
+      resultBox.classList.add('show');
+    }
+
+    function saveApiUrl() {
+      const url = normaliseUrl(apiUrlInput.value);
+
+      if (!url || !/^https?:\/\//i.test(url)) {
+        setStatus('Please enter a valid URL beginning with https:// or http://', 'error');
+        return false;
+      }
+
+      localStorage.setItem('legalApiUrl', url);
+      apiUrlInput.value = url;
+      updateEndpointPreview();
+      setStatus('API URL saved. You can now submit a legal query.', 'success');
+      return true;
+    }
+
+    saveApiUrlButton.addEventListener('click', saveApiUrl);
+
+    apiUrlInput.addEventListener('input', updateEndpointPreview);
+
+    clearButton.addEventListener('click', () => {
+      queryInput.value = '';
+      resultBox.classList.remove('show');
+      clearStatus();
+      queryInput.focus();
+    });
+
+    document.querySelectorAll('#examples li').forEach(item => {
+      item.addEventListener('click', () => {
+        queryInput.value = item.textContent;
+        queryInput.focus();
+      });
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const query = queryInput.value.trim();
+      let baseUrl = getApiUrl();
+
+      if (!baseUrl) {
+        setStatus('First paste your latest public ngrok URL and click Save URL.', 'error');
+        apiUrlInput.focus();
+        return;
+      }
+
+      if (!query) {
+        setStatus('Please enter a legal query first.', 'error');
+        queryInput.focus();
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Checking...';
+      resultBox.classList.remove('show');
+      setStatus('Sending your query to the AI Legal Assistant API...', 'loading');
+
+      try {
+        const url = `${baseUrl}/predict?query=${encodeURIComponent(query)}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        let payload;
+
+        if (contentType.includes('application/json')) {
+          payload = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(`API returned a non-JSON response (HTTP ${response.status}). ${text.slice(0, 180)}`);
+        }
+
+        if (!response.ok) {
+          const message = payload.detail || payload.message || `Request failed with HTTP ${response.status}`;
+          throw new Error(message);
+        }
+
+        if (payload.status && payload.status !== 'success') {
+          throw new Error(payload.message || 'The API could not process this query.');
+        }
+
+        renderResult(payload);
+        setStatus('Guidance received successfully.', 'success');
+      } catch (error) {
+        console.error(error);
+        setStatus(
+          `Could not reach the API. Check the ngrok URL, keep the Colab cell running, and try again. Details: ${error.message}`,
+          'error'
+        );
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Get Legal Guidance';
+      }
+    });
+
+    const savedUrl = localStorage.getItem('legalApiUrl');
+    if (savedUrl) apiUrlInput.value = savedUrl;
+    updateEndpointPreview();
+  </script>
+</body>
+</html>
